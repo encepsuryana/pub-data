@@ -1,0 +1,29 @@
+/*  Line Chart Style */
+.line {
+  fill: none;
+  stroke: #3ad0f2;
+  stroke-width: 3px;
+}
+
+.grid line {
+  stroke: #888;
+  stroke-opacity: 0.6;
+  shape-rendering: crispEdges;
+}
+
+.grid path {
+  stroke-width: 0;
+}
+
+div.tooltip {
+  position: absolute;
+  text-align: center;
+  width: 70px;
+  height: 35px;
+  padding: 2px;
+  font-size: 11px;
+  background-color: #3ad0f2;
+  border: 0px;
+  border-radius: 8px;
+  pointer-events: none;
+}

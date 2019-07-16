@@ -1,0 +1,124 @@
+.card-header:first-child {
+  border-radius: calc(.35rem - 1px) calc(.35rem - 1px) 0 0;
+}
+
+.card-header {
+  padding: .75rem 1.25rem;
+  margin-bottom: 0;
+  background-color: #f8f9fc;
+  border-bottom: 1px solid #e3e6f0;
+}
+
+.text-primary {
+  color: #4e73df!important;
+}
+
+.font-weight-bold {
+  font-weight: 700!important;
+}
+
+.dropdown-item:focus, .dropdown-item:hover {
+  color: #f8f9fc;
+  text-decoration: none;
+  background-color: #4e73df;
+}
+
+.card-body {
+  flex: 1 1 auto;
+  padding: 0px;
+}
+
+
+/*  Line Chart Style */
+.line {
+  fill: none;
+  stroke: #2196f3 ;
+  stroke-width: 3px;
+}
+
+.grid line {
+  stroke: #000;
+  stroke-opacity: 0.25;
+  shape-rendering: crispEdges;
+}
+
+.grd line {
+  stroke: #000;
+  stroke-opacity: 0.25;
+  shape-rendering: crispEdges;
+}
+
+.grid path {
+  stroke-width: 0;
+}
+
+div.tooltip {
+  position: absolute;
+  text-align: center;
+  color: #fff;
+  width: 80px;
+  font-family: "Verdana";
+  font-size: 0.95em;
+  background-color: #232F34;
+  pointer-events: none;
+}
+
+.dots {
+  stroke: none;
+  fill: #2196f3 ;
+
+}
+.dots:hover {
+  stroke-width: 2px;
+  stroke: #d32f2f;
+}
+
+
+.bar {
+  fill: #2196f3 ;
+}
+
+.bar:hover {
+  fill: #E8743B;
+}
+
+.bara:hover {
+  fill: #d32f2f;
+}
+
+/*Pie Chart Style */
+.pie {
+  margin: 30px;
+}
+
+svg {
+  float: left;
+}
+
+.legend {
+  float: left;
+  font-family: "Verdana";
+  font-size: .7em;
+}
+
+.pie text {
+  font-family: "Verdana";
+}
+
+.pie .name-text {
+  font-size: .8em;
+}
+
+.pie .value-text {
+  font-size: 3em;
+}
+
+label {
+  margin-right: 1rem;
+}
+fieldset {
+  border: none;
+}
+legend {
+  font-weight: bold;
+}

@@ -1,0 +1,94 @@
+    var svg = d3.select("svg"),
+        margin = {top: 20, right: 10, bottom: 30, left: 40},
+        width = parseInt(d3.select("svg").style("width")) - margin.left - margin.right,
+        height = parseInt(d3.select("svg").style("height")) - margin.top - margin.bottom,
+        g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+
+
+    // The scale spacing the groups:
+    var x0 = d3.scaleBand()
+        .rangeRound([0, width])
+        .paddingInner(0.1);
+    
+    // The scale for spacing each group's bar:
+    var x1 = d3.scaleBand()
+        .padding(0.05);
+    var y = d3.scaleLinear()
+        .rangeRound([height, 0]);
+    var z = d3.scaleOrdinal()
+        .range(["#98abc5", "#8a89a6", "#7b6888", "#6b486b", "#a05d56", "#d0743c", "#ff8c00"]);
+    
+    //Load CSV
+    d3.csv("data_histo.csv", function(d, i, columns) {
+        for (var i = 1, n = columns.length; i < n; ++i) d[columns[i]] = +d[columns[i]];
+        return d;
+
+    }).then(function(data) {
+        console.log(data);
+        var keys = data.columns.slice(1);
+        console.log('keys');
+        console.log(keys);
+        x0.domain(data.map(function(d) { return d.Years; }));
+        x1.domain(keys).rangeRound([0, x0.bandwidth()]);
+        y.domain([0, d3.max(data, function(d) { return d3.max(keys, function(key) { return d[key]; }); })]).nice();
+       
+        //draw y axis label
+        g.append("g")
+            .attr("class", "y axis")
+            .attr("class","grid")
+            .call(d3.axisLeft(y).ticks(8).tickSize(-width))
+            .append("text")
+            .attr("x", 2)
+            .attr("y", y(y.ticks().pop()) + 0.5)
+            .attr("dy", "0.32em")
+            .attr("fill", "#000")
+            .attr("font-weight", "bold")
+            .attr("text-anchor", "start")
+            .text("Amount (x1.000.000)");
+
+        // draw bar line
+        g.append("g")
+            .selectAll("g")
+            .data(data)
+            .enter().append("g")
+            .attr("class","bar")
+            .attr("transform", function(d) { return "translate(" + x0(d.Years) + ",0)"; })
+            .selectAll("rect")
+            .data(function(d) { return keys.map(function(key) { return {key: key, value: d[key]}; }); })
+            .enter().append("rect")
+            .attr("x", function(d) { return x1(d.key); })
+            .attr("y", function(d) { return y(d.value); })
+            .attr("width", x1.bandwidth())
+            .attr("height", function(d) { return height - y(d.value); })
+            .attr("fill", function(d) { return z(d.key); });
+        
+        //draw axis
+        g.append("g")
+            .attr("class", "axis")
+            .attr("transform", "translate(0," + height + ")")
+            .call(d3.axisBottom(x0));
+
+        // add legend
+        var legend = g.append("g")
+            .attr("font-family", "Verdana")
+            .attr("font-size", 10)
+            .attr("text-anchor", "end")
+            .selectAll("g")
+            .data(keys.slice().reverse())
+            .enter().append("g")
+            .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+        legend.append("rect")
+            .attr("x", width - 17)
+            .attr("width", 15)
+            .attr("height", 15)
+            .attr("fill", z)
+            .attr("stroke", z)
+            .attr("stroke-width",2)
+            .on("click",function(d) { update(d) });
+        legend.append("text")
+            .attr("x", width - 24)
+            .attr("y", 9.5)
+            .attr("dy", "0.32em")
+            .text(function(d) { return d; });
+    });

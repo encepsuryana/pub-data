@@ -1,0 +1,364 @@
+function createChart (svg, data) {
+  var opacity = .8;
+  var opacityHover = 1;
+  var otherOpacityOnHover = .8;
+  var tooltipMargin = 185;
+  
+  var colors = ['#003f5c','#444e86','#955196','#dd5182','#ff6e54','#ffa600']
+
+  svg = d3.select(svg)
+  var margin = {top: 20, right: 10, bottom: 30, left: 45},
+      width = 600 - margin.left - margin.right,
+      height = 420 - margin.top - margin.bottom, 
+      g = svg.append('g').attr('transform', 'translate(' + margin.left + ',' + margin.top + ')')
+
+  var xa = d3.scaleBand()
+      .rangeRound([0, width])
+      .paddingInner(0.1)
+
+  var xb = d3.scaleBand()
+      .padding(0.05)
+
+  var y = d3.scaleLinear()
+      .rangeRound([height, 0])
+
+  var z = d3.scaleOrdinal()
+      .range(colors)
+
+  var keyDatas = data[Object.keys(data)[0]].map(function (obj) { return obj.name; })
+  var keyValues =   ["1", "2", "3", "4", "5", "6"]
+
+    Object.keys(data).forEach(function (d){
+      data[d].forEach(function (section){
+        keyValues.forEach(function (k){
+          if (section.values[k] === undefined) { section.values[k] = 0 }
+        })
+      })
+    })
+
+  xa.domain(keyDatas)
+  xb.domain(keyValues).rangeRound([0, xa.bandwidth()])
+
+  //draw y axis label
+  g.append("g")
+      .attr("class", "y axis")
+      .append("text")
+      .attr("dx", -250)
+      .attr("dy", y(y.ticks().pop()) + 0.5)
+      .attr("dy", -30)
+      .attr("fill", "#000")
+      .attr("font-size", "11px")
+      .attr("text-anchor", "start")
+      .attr("font-weight","bold")
+      .attr("transform", "rotate(-90)")
+      .text("Amount (x1.000.000)");
+
+  var xAxis = g.append('g')
+      .attr('class', 'axis')
+      .attr('transform', 'translate(0,' + height + ')')
+      .style("color","#000")
+      .call(d3.axisBottom(xa))
+
+  var yAxis = g.append('g')
+      .attr('class', 'axis')
+
+  yAxis.append('text')
+      .attr('x', 2)
+      .attr('y', y(y.ticks().pop()) + 0.5)
+      .attr('dy', '0.32em')
+      .attr('font-weight', 'bold')
+      .attr('text-anchor', 'start')
+
+  var barContainer = g.append('g')
+      .on("mousemove", function(d) {
+                  var mousePosition = d3.mouse(this);
+                  var x = mousePosition[0] + width/10;
+                  var y = mousePosition[1] + height/2 - tooltipMargin;
+
+                  var text = d3.select('.tooltip text');
+                  var bbox = text.node().getBBox();
+                  if(x - bbox.width/2 < 0) {
+                    x = bbox.width/2;
+                    } else if(width - x - bbox.width/2 < 0) {
+                        x = width - bbox.width/2;
+                    }
+
+                  if(y - bbox.height/2 < 0) {
+                        y = bbox.height + tooltipMargin * 2;
+                    } else if(height - y - bbox.height/2 < 0) {
+                        y = height - bbox.height/2;
+                    }
+
+                  d3.select('.tooltip')
+                    .style("opacity", 1)
+                    .attr('transform',`translate(${x}, ${y})`);
+              })
+
+  var legend = g.append('g')
+      .attr('font-size', 10)
+      .attr('text-anchor', 'end')
+
+  legend.append('text')
+      .attr('x', width - 19)
+      .style('font-weight', 'bold')
+      .attr('dy', -10)
+      .attr('dx', 20)
+
+  var legendEnter = legend
+      .selectAll('g')
+      .data(keyValues)
+      .enter().append('g')
+        .attr('transform', function (d, i) { return 'translate(0,' + i * 20 + ')' })
+
+  legendEnter.append('rect')
+      .attr('x', width - 19)
+      .attr('width', 19)
+      .attr('height', 19)
+      .attr('fill', z)
+
+  legendEnter.append('text')
+      .attr('x', width - 24)
+      .attr('y', 9.5)
+      .attr('dy', '0.32em')
+      .text(function (d) { return d; })
+
+  var stack = d3.stack()
+      .keys(keyValues)
+
+  function updateChart (data, chartType) {  
+    if ( chartType === void 0 ) chartType='group';
+
+    if (chartType === 'group'){
+      
+        var maxValue = d3.max(data.map(function (d) 
+              { return Object.values(d.values); })
+              .reduce(function (a, b) { return a.concat(b); }, []))
+        
+        y.domain([0, maxValue]).nice()
+
+        yAxis.transition()
+              .call(d3.axisLeft(y).ticks(10).tickSize(-width))
+
+        var barDatas = barContainer
+              .selectAll('g')
+              .data(data)
+
+        barDatas.exit().remove()
+
+        var bars = barDatas
+              .enter()
+              .append('g')
+              .attr('transform', function (d) { return 'translate(' + xa(d.name) + ',0)' })
+              .merge(barDatas)
+              .selectAll('rect')
+              .data(function (d) {
+                return Object.keys(d.values).map(function (k) { return ({ key: k, value: d.values[k] }); })
+              })
+
+        bars.exit().transition().style('opacity', 0).remove()
+
+        bars.enter()
+              .append('rect')
+              .attr('fill', function (d) {
+                return z(d.key)
+              })
+              .on("mouseover", function(d) {
+                d3.selectAll('path')
+                  .style("opacity", otherOpacityOnHover);
+
+                d3.select(this) 
+                  .style("opacity", opacityHover);
+
+                var g = d3.select("svg")
+                  .append("g")
+                  .attr("class", "tooltip")
+                  .style("opacity", 0);
+
+                g.append("text")
+                  .attr("class", "name-text")
+                  .attr('fill','#fff')
+                  .text(`${d.key} (${d.value})`)
+                  .attr('text-anchor', 'middle')
+                  .attr('font-size','11px');
+
+                var text = g.select("text");
+                var bbox = text.node().getBBox();
+                var padding = 10;
+                g.insert("rect", "text")
+                  .attr("x", bbox.x - padding)
+                  .attr("y", bbox.y - padding)
+                  .attr("width", bbox.width + (padding*2))
+                  .attr("height", bbox.height + (padding*2))
+                  .style("fill", "#232F34")
+                  .style("opacity", 1);
+            })
+
+            .on("mouseout", function(d) {   
+                d3.select("svg")
+                  .select(".tooltip").remove();
+                d3.selectAll('path')
+                  .style("opacity", opacity);
+            })
+              .attr("class","bara")
+              .attr('y', height)
+              .merge(bars)
+              .transition()
+              .attr('width', xb.bandwidth())
+              .attr('x', function (d) { return xb(d.key) })
+              .attr('y', function (d) { return y(d.value); })
+              .attr('height', function (d) { return height - y(d.value); })
+    }
+
+    else if (chartType === 'stack'){
+          var maxValue$1 = d3.max(
+            data.map(function (d) { return Object.values(d.values); })
+                .map(function (valueArray){
+            return valueArray.reduce(function (a,b){ return a+ b; })
+          }) )
+          
+          y.domain([0, maxValue$1]).nice()
+
+          yAxis.transition()
+              .call(d3.axisLeft(y).ticks(10).tickSize(-width))
+
+          var seriesFlipped = stack(data.map(function (d){
+            var defaultData = {}
+            keyValues.forEach(function (k){ return defaultData[k] = 0; })
+          return Object.assign(defaultData, d.values)
+          }))
+
+          var series = []
+          seriesFlipped[0].forEach(function (col, i){
+            var arr = []
+            seriesFlipped.forEach(function (row, index2){
+              row[i].key = index2 + 1 + ''
+              arr.push(row[i])
+            })
+            series.push(arr)
+          })
+
+          var barSections = barContainer
+                .selectAll('g')
+                .data(series)
+
+          var bars$1 = barSections
+                .enter()
+                .append('g')
+                .merge(barSections)
+                .attr('transform', function (d,i){console.log(xa(keyDatas[i])); return 'translate(' + xa(keyDatas[i]) + ',0)'} )
+                .selectAll('rect')
+                .data(function (d){ return d; }, function (d){ return d.key; })
+
+          var enterBars = bars$1.enter()
+                .append('rect')
+                .attr('fill',  function (d){ return z(d.key); })
+
+          bars$1.exit().transition()
+                .style('opacity', 0)
+                .remove()
+
+          enterBars.merge(bars$1)
+                .on("mouseover", function(d) {
+                d3.selectAll('path')
+                  .style("opacity", otherOpacityOnHover);
+                d3.select(this) 
+                  .style("opacity", opacityHover);
+
+                var g = d3.select("svg")
+                  .append("g")
+                  .attr("class", "tooltip")
+                  .style("opacity", 0);
+
+                g.append("text")
+                  .attr("class", "name-text")
+                  .attr('fill','#fff')
+                  .text(`${d.key}`)
+                  .attr('text-anchor', 'middle')
+                  .attr('font-size','11px');
+
+                var text = g.select("text");
+                var bbox = text.node().getBBox();
+                var padding = 10;
+                g.insert("rect", "text")
+                  .attr("x", bbox.x - padding)
+                  .attr("y", bbox.y - padding)
+                  .attr("width", bbox.width + (padding*2))
+                  .attr("height", bbox.height + (padding*2))
+                  .style("fill", "#232F34")
+                  .style("opacity", 1);
+            })
+                .transition()
+                .delay(function (d,i){ return i * 50; })
+                .attr('width', xa.bandwidth())
+                .attr("y", function(d) {return y(d[1]) })
+                .attr("x", 0)
+                .attr("height", function(d) { return y(d[0]) - y(d[1]) })
+    }
+
+  }
+
+  return {
+    updateChart: updateChart
+  }
+}
+
+d3.json('data/data_histo.json')
+    .then(function(data){
+        var chart = createChart(document.querySelector('svg'), data)
+
+        var fieldset1 = d3.select('.controls')
+            .append('fieldset')
+        
+        fieldset1.append('legend')
+            .text('Tahun')
+
+        Object.keys(data).forEach(function (year, index ){
+          var label = fieldset1.append('label')
+          label.append('input')
+                .attr('type', 'radio')
+                .attr('name', 'year')
+                .attr('value', year)
+                .attr('checked', function(){
+                  if (index === 0) { return true }
+                  return null
+                })
+
+          label.append('span')
+                .text(year)
+
+          label.on('click', function(){
+            chart.updateChart(data[year], document.querySelector('input[name="graphType"]:checked').value)
+          })
+        })
+
+
+        var fieldset2 = d3.select('.controls').append('fieldset')
+        var types =  ['group', 'stack']
+        fieldset2.append('legend')
+                .text('Data Layout')
+
+        types.forEach(function (graphType, index){
+          var label = fieldset2.append('label')
+          label.append('input')
+                .attr('type', 'radio')
+                .attr('name', 'graphType')
+                .attr('value', graphType)
+                .attr('checked', function(){
+                  if (index === 0) { return true }
+                  return null
+                })
+                .on('click', function (){
+                  chart.updateChart(data[document.querySelector('input[name="year"]:checked').value], graphType)
+                })
+
+          label.append('span')
+                .text(graphType)
+        })
+
+        chart.updateChart(data[Object.keys(data)[0]])
+
+})
+
+.catch(function(error){
+    if (error) throw error; 
+});

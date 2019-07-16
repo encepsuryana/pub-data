@@ -1,0 +1,212 @@
+// Load data CSV
+d3.csv("bar_data.csv").then(d => chart(d));
+
+// function chart
+function chart(csv) {
+  csv.forEach(function(d) {
+    var dates = d.date.split("-");
+            d.year = dates[0]; d.customers = dates[1];
+            d.value = +d.value;
+            return d;
+    })
+
+    var customers = [...new Set(csv.map(d => d.customers))],
+            years  = [...new Set(csv.map(d => d.year))];
+
+    var options = d3.select("#year")
+            .selectAll("option")
+            .data(years)
+            .enter().append("option")
+            .text(d => d)
+
+    // Create SVG Canvas
+    var svg = d3.select("#chart"),
+            margin = {top: 20, right: -30, bottom: 40, left: 55},
+            width  = parseInt(d3.select("#chart").style("width")) - margin.left - margin.right,
+            height = parseInt(d3.select("#chart").style("height")) - margin.top - margin.bottom;
+
+    var x = d3.scaleBand()
+            .range([margin.left, width - margin.right])
+            .padding(0.6)
+            .paddingOuter(0.5)
+            
+    var y = d3.scaleLinear()
+            .range([height - margin.bottom, margin.top])
+
+    var xAxis = g => g
+            .style("color","#000")
+            .attr("transform", "translate(0," + (height - margin.bottom) + ")")
+            .call(d3.axisBottom(x)
+                .tickSizeOuter(0))
+            .selectAll("text")
+            .style("font-size", "11px")
+            .style("text-anchor", "end")
+            .attr("dx", "-.8em")
+            .attr("dy", "-.55em")
+            .attr("transform", "rotate(-90)" );
+
+    var yAxis = g => g
+            .attr("transform", "translate(" + margin.left + ",0)")
+            .call(d3.axisLeft(y)
+                .ticks(8)
+                .tickSize(-width))
+
+    // add tittle chart
+    svg.append("text")
+            .attr("dx", (width / 2))             
+            .attr("dy", 0 - (margin.top / 3))
+            .attr("text-anchor", "middle")  
+            .style("font-size", "16px") 
+            .style("font-weight","bold")
+            .text("Grafik Bulanan");
+
+    svg.append("g")
+            .attr("class", "x-axis")
+
+    svg.append("g")
+            .attr("class", "y-axis")
+
+    svg.append("text")
+            .attr("class", "x label")
+            .attr("text-anchor", "end")
+            .attr("dx", width - 250)
+            .attr("dy", height + 40)
+            .style("font-size","13px")
+            .style("font-weight","bold")
+            .text("Customers");
+
+    svg.append("text")
+            .attr("class", "y label")
+            .attr("text-anchor", "end")
+            .attr("dx", - 150)
+            .attr("dy", "1.5em")
+            .attr("transform", "rotate(-90)")
+            .style("font-size","13px")
+            .style("font-weight","bold")
+            .text("Sales [M]");
+
+    // property update
+    update(d3.select("#year").property("value"), 0)
+
+    // function update
+    function update(year, speed) {
+        var opacity = .8;
+        var opacityHover = 1;
+        var otherOpacityOnHover = .8;
+        var tooltipMargin = 200;
+
+        var data = csv.filter(f => f.year == year)
+
+        y.domain([0, d3.max(data, d => d.value)]).nice()
+
+        // add y Axis
+        svg.selectAll(".y-axis")
+            .transition()
+            .duration(speed)
+            .call(yAxis);
+
+        data.sort(d3.select("#sort")
+            .property("checked")
+            ? (a, b) => b.value - a.value
+            : (a, b) => customers.indexOf(a.customers) - customers.indexOf(b.customers)
+            )
+
+        x.domain(data.map(d => d.customers))
+
+        svg.selectAll(".x-axis")
+            .transition()
+            .duration(speed)
+            .call(xAxis)
+
+        var bar = svg.selectAll(".bar")
+            .data(data, d => d.customers)
+
+        bar.exit().remove();
+
+        bar.enter().append("rect")
+            .attr("class", "bar")
+            .attr("width", x.bandwidth())
+            .on("mouseover", function(d) {
+                d3.selectAll('path')
+                  .style("opacity", otherOpacityOnHover);
+                d3.select(this) 
+                  .style("opacity", opacityHover);
+
+                var g = d3.select("svg")
+                  .append("g")
+                  .attr("class", "tooltip")
+                  .style("opacity", 0);
+
+                g.append("text")
+                  .attr("class", "name-text")
+                  .attr('fill','#fff')
+                  .text(`${d.customers} (${d.value})`)
+                  .attr('text-anchor', 'middle')
+                  .attr('font-size','11px');
+
+                var text = g.select("text");
+                var bbox = text.node().getBBox();
+                var padding = 10;
+                g.insert("rect", "text")
+                  .attr("x", bbox.x - padding)
+                  .attr("y", bbox.y - padding)
+                  .attr("width", bbox.width + (padding*2))
+                  .attr("height", bbox.height + (padding*2))
+                  .style("fill", "#232F34")
+                  .style("opacity", 1);
+            })
+
+            .on("mousemove", function(d) {
+                var mousePosition = d3.mouse(this);
+                var x = mousePosition[0] + width/60;
+                var y = mousePosition[1] + height/2 - tooltipMargin;
+
+                var text = d3.select('.tooltip text');
+                var bbox = text.node().getBBox();
+                if(x - bbox.width/2 < 0) {
+                  x = bbox.width/2;
+                  } else if(width - x - bbox.width/2 < 0) {
+                      x = width - bbox.width/2;
+                  }
+
+                if(y - bbox.height/2 < 0) {
+                      y = bbox.height + tooltipMargin * 2;
+                  } else if(height - y - bbox.height/2 < 0) {
+                      y = height - bbox.height/2;
+                  }
+
+                d3.select('.tooltip')
+                  .style("opacity", 1)
+                  .attr('transform',`translate(${x}, ${y})`);
+            })
+
+            .on("mouseout", function(d) {   
+                d3.select("svg")
+                  .select(".tooltip").remove();
+                d3.selectAll('path')
+                  .style("opacity", opacity);
+            })
+            .merge(bar)
+            .transition()
+            .duration(500)
+            .delay(function(d,i){ return i*100 })
+            .attr("x", d => x(d.customers))
+            .attr("y", d => y(d.value))
+            .attr("height", d => y(0) - y(d.value))
+    }
+    
+    chart.update = update;
+}
+
+var select = d3.select("#year")
+    .style("font-size","10px")
+    .style("width","70px")
+    .on("change", function() {
+        chart.update(this.value, 750)
+    })        
+
+var checkbox = d3.select("#sort")
+    .style("margin-left", "420px")
+    .on("click", function() {
+        chart.update(select.property("value"), 750)
+    })
